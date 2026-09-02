@@ -1,8 +1,8 @@
 # MIS3060 Business Intelligence with AI
 Villanova School of Business — Fall 2026
 
-**Student:** [Your Full Name]
-**GitHub:** [Your GitHub Username]
+**Student:** Tyler Tobin
+**GitHub:** ttobin01
 
 ## About This Repository
 This repository contains all lab exercises, homework assignments, and project
