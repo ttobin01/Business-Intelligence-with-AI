@@ -58,14 +58,16 @@ Independent press coverage agrees. MacRumors reported "$29.8B Profit on $109.4B 
 - **Events found:** all 30 rows are real events described in the filings. The 3 filings with no event row are compensation-only (MSFT 2025-12-08 stock plan, NVDA 2026-03-06 variable pay plan, JPM 2026-01-22 CEO pay), and the script correctly printed the "compensation-only 5.02" message for each.
 - **Iteration:** the first run of the generated script found 26 rows. Checking them against the filings led to the fixes below (logged in `ai_usage_log.md`), which brought the final count to 30 rows:
   - Tim Cook's CEO → Executive Chair transition was missed, because the verb list had no "transition."
-  - Chris Kondo, Kate Adams and David Chojnowski were missed. They are named only as the person being succeeded, or as the one whose duties "transition from" them.
+  - Chris Kondo and Kate Adams were missed. They are named only as the person being succeeded, or as the one whose duties "transition from" them, so they now get a `departure` row.
+  - David Chojnowski was missed. He "will continue to serve as … Controller until … January 31, 2026, at which time he will transition to the role of Senior Vice President, Treasurer and Tax", so he now gets a `both` row: he leaves one role and takes another.
   - Suzanne Nora Johnson appeared twice ("Ms. Nora Johnson" was read as a second person).
   - Some effective dates were missed because they were written as a defined term ("effective on the Transition Date") or as "will become … on March 1, 2026".
   - A second iteration removed a spurious Ajay Puri "appointment" that came from "a seamless transition to his successor."
 - **Known remaining limitations (not errors in event detection):**
   - 8 `effective_date` values are `NOT_FOUND`. In every case the filing gives no calendar date: "effective immediately", "until the Annual Meeting", "upon the commencement of his successor's employment" or "late 2026".
   - A few titles are shortened when the appositive has commas, e.g. Ajay Puri shows `Executive Vice President` instead of "Executive Vice President, Worldwide Field Operations".
-  - Chris Kondo's and John Furner's effective dates, and Kondo's title, are inferred from their successor, because the successor takes over the same role on the same day. Furner's title is inferred the same way.
+  - Two predecessor rows have no title or date written next to their name: Chris Kondo (AAPL 2026-01-02) and John Furner (WMT 2026-01-16, leaving the Walmart U.S. CEO role). Their title and effective date are taken from their successor's row (Ben Borders, David Guggina), because the successor takes over the same role on the same day.
+  - `John Furner` (WMT 2026-01-16) and `John R. Furner` (WMT 2025-11-14) are the **same person** with two related events: appointed Walmart Inc. CEO effective 2026-02-01, and leaving the Walmart U.S. CEO role on that date. The name is spelled as each filing spells it.
 
 ---
 
@@ -113,3 +115,4 @@ AAPL most recent quarter (Yahoo period end 2026-06-30):
 - **Timeline:**
   - All 30 values of `days_to_nearest_earnings`, `earnings_filing_date` and `event_timing` were recomputed with plain Python datetime arithmetic, independently of pandas. There were **0 mismatches**.
   - With a header-only `executive_events.csv`, the script wrote an empty timeline and printed all-zero counts, without crashing.
+  - **Window-edge check:** the earnings table covers only the four most recent quarters. For the earliest events (MSFT 2025-09-30, WMT 2025-10-22), the earlier earnings filing left out of the table (2025-07-30 and 2025-08-21, both 62 days away) is further away than the one matched (29 days), so no `event_timing` label would change.
