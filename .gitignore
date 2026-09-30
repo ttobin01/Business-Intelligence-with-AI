@@ -28,6 +28,8 @@ secrets.*
 02_Data/**
 !02_Data/.gitkeep
 *.csv
+!hw*/*.csv
+# ^ exception: homework deliverable CSVs (hw01/ ... hw08/) are tracked
 *.xlsx
 *.parquet
 *.h5
