@@ -89,4 +89,4 @@ Rule pass stays below 100% in three fact tables (fact_fees 99.977%, fact_portfol
 - **Outlier flags:** IQR rules flag 10.2% of snapshot balances and 9.3% of fee amounts. **A flag does not mean a value is wrong:** client wealth is highly skewed, so legitimate UHNW accounts fall outside the fences. A flag only marks a value for review.
 
 ---
-AI-assisted report — reviewed for factual accuracy on [date] by Tyler Tobin
+AI-assisted report — reviewed for factual accuracy on October 19, 2026 by Tyler Tobin
