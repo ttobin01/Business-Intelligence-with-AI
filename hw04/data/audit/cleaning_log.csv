@@ -1,0 +1,23 @@
+step,table,issue,action,rows_affected,note
+1,dim_client,25 client records duplicated under ids 2501-2525 (last name truncated),quarantine,25,"kept the lower id that holds all fact rows; verified identical attributes, one-letter last-name change and 0 fact rows on every copy; tiers now Retail 1,510 / HNW 737 / UHNW 253 (decision log #1)"
+2,dim_client,"state stored as full names (77 rows after de-duplication; 78 in raw, 1 was on a quarantined duplicate)",standardize,77,explicit name->code map; checks no unmapped value and per-state counts add up (decision log #2)
+3,fact_transactions,200 transactions reference client_ids 2702-3192 that do not exist,quarantine,200,"txn_id 298573-298772; $10,888,495.37; ids absent from all tables (decision log #4)"
+4,fact_transactions,security_id stored as decimals (45.0),convert,197044,integer text; numeric value unchanged; 100% of ids match dim_security exactly (decision log #3)
+5,fact_transactions,835 Buy rows with negative shares (836 in raw; 1 was in the quarantined orphan rows),convert (absolute value),835,amount = |shares| x price confirmed on every row before and after (decision log #5)
+6,fact_portfolio_snapshot,300 return_ytd values stored as percent strings,convert (recompute = benchmark_return_ytd + active_alpha_ytd),300,agrees with percent/100 within 0.000050 on every row; alpha identity holds on all rows (decision log #6)
+7,fact_transactions,Buy/Sell dated on a non-trading day (weekend) per dim_date,flag (trade_on_non_trading_day_flag),40630,date kept; true trade date unknown (decision log #8)
+8,fact_transactions,transaction dated after the client's last monthly snapshot (inactive clients only),flag (txn_after_last_snapshot_flag),2410,131 inactive clients; rows kept (decision log #9)
+9,fact_portfolio_snapshot,"aum exactly $1,000.00 placeholder floor",flag (aum_floor_flag),420,value kept; true balance unknown (decision log #10)
+10,fact_fees,"aum_basis exactly $1,000.00 placeholder floor",flag (aum_floor_flag),386,consistent with the snapshot flag (decision log #10)
+11,fact_portfolio_snapshot,|active_alpha_ytd| > 0.50: return implausibly far from benchmark,flag (extreme_return_flag),3875,values kept; use AUM-weighted returns or exclude flagged rows (decision log #11)
+12,dim_client,risk_profile blank,leave as is,75,MCAR-looking; no mode fill (would invent a suitability rating) - decision log #7
+13,dim_security,sector blank on ETFs / expense_ratio_bps blank on stocks (structural nulls),leave as is,500,decision log #12
+14,dim_advisor,certifications = 'None' text is a real category (no certification),leave as is,6,read with keep_default_na=False - #13
+15,fact_transactions,security_id/shares/price blank on Deposit/Withdrawal/Advisory Fee rows (structural nulls),leave as is,101528,decision log #14
+16,fact_portfolio_snapshot,tiny returns written in scientific notation (valid numbers),leave as is,891,decision log #15
+17,dim_client,zip_code / account type '529' are codes that must stay text,leave as is,228,rows with a leading-zero ZIP - decision log #16
+18,dim_client,zip_code first digit inconsistent with state,leave as is,2260,cannot tell which field is wrong - decision log #17
+19,fact_transactions,Dividend amount equals the full position value (shares x price),leave as is,53826,source definition issue; true dividend per share unknown - decision log #18
+20,fact_transactions,Advisory Fee debits do not tie to fact_fees (no fee row or different amount),leave as is,35741,different systems; use fact_fees for revenue - decision log #19
+21,fact_portfolio_snapshot,snapshot client-months with no fee row,leave as is,7350,cannot create a bill without inventing it - decision log #20
+22,fact_transactions,transactions dated on fixed market holidays marked as trading days,leave as is,1508,dim_date only excludes weekends - decision log #21
