@@ -75,7 +75,12 @@ See `reports/cleaning_report.md` for the business summary and `data/clean/README
 
 ## Code review findings and what I did about them
 
-Each script was drafted, then run and debugged, then reviewed in a **separate Claude session that had not written it**, using the course's Claude Code review prompts. The prompts asked about:
+The scripts were reviewed in two rounds:
+
+1. **Round 1 — separate Claude sessions** that had not written the code, using the course's review prompts (tables below the Claude Code section).
+2. **Round 2 — Claude Code in VS Code.** I opened the repository in VS Code and gave the Claude Code extension one review prompt per script. It read the code and confirmed each suspicion on the real data or a small test case. Its findings, and what I did about each, are in the first set of tables below.
+
+The prompts asked about:
 
 - null handling;
 - checks applied in the wrong direction;
@@ -84,9 +89,73 @@ Each script was drafted, then run and debugged, then reviewed in a **separate Cl
 - edge cases;
 - pandas 2 vs 3 compatibility.
 
-The reviewers ran the code and tested edge cases on modified copies of the data. Everything below was resolved before the final run.
+Every finding below was resolved (fixed, or kept on purpose with a reason) before the final run.
 
-### `01_profile.py` and `wildcat_schema.py`
+### Round 2: Claude Code (VS Code) review
+
+**Prompts used:**
+
+- **`01_profile.py` + `wildcat_schema.py`:** does either mis-handle nulls or apply a check in the wrong direction; could a check silently produce a wrong count; is the profiler generic; which edge cases would you test?
+- **`02_clean.py` vs `decision_log.md`:** does every step have a before/after validation print; could any mapping or merge silently produce a wrong value; does any step silently change the row count?
+- **`03_validate.py`:** do `check_referential_integrity` or `iqr_flags` mis-handle nulls or check in the wrong direction; which edge cases would you test?
+
+**What Claude Code confirmed was already correct:**
+
+- Range checks are in the right direction.
+- No mapping or merge can silently write a wrong value; every lookup raises on a miss.
+- No step can silently change the row count.
+- String replacements go the right way (`\.0+$`, `lstrip("-")`).
+- NaN comparisons fail safe.
+- The RI direction (child → parent) and the IQR fence direction are correct.
+
+After the fixes, the full pipeline was re-run.
+
+- `profile_raw.csv`, every clean table and every audit file are byte-identical to the previous run.
+- The only output changes come from finding P2: one new audit finding (F003), so the later finding IDs moved up by one (`decision_log.md` was renumbered to match), and `dim_client`'s raw rule-pass score moved from 99.742% to 99.663%.
+
+#### `01_profile.py` and `wildcat_schema.py`
+
+| # | Claude Code flagged | What I did |
+|---|---|---|
+| P1 | In generic mode the key-uniqueness check could never fail: `infer_key` only picked a column that was already unique, so a duplicated id made the check disappear. | **Fixed.** A column named `id`/`*_id` is always the candidate key, so duplicates now FAIL (tested: `client_id = 1,1,2` → FAIL, 2 rows). |
+| P2 | The `is_active` cross-table rule skipped clients with no snapshot. 24 of the 25 duplicate clients say `is_active=True` with no snapshot, and the rule scored them as passing. | **Fixed.** No snapshot + `True` is now a violation. The raw audit now reports F003 (24 rows, ERROR). These are the same records as the duplicate defect, so no cleaning step changed. The decision log (issues 1, 9, 22) and the report were updated. |
+| P3 | `_lookup`, `_snapshot_aum_by_month` and `_billed_fee` kept the *first* row when a key was duplicated, so a rule could compare against an arbitrary row. | **Fixed.** A shared `_unique_lookup` drops ambiguous keys (those rows are not evaluated) and prints a warning. The data has no duplicated keys, so the counts are unchanged. |
+| P4 | `to_date` accepted `2020-1-5`, which the type check rejects. An unparseable date gave a NaN month key, and `isin` matched NaN to NaN. | **Fixed.** `to_date` requires exactly `yyyy-mm-dd`. Month keys with a bad date are excluded from both fee↔snapshot rules. |
+| P5 | The "null FK where required" check used `blank()`, not the RI null definition (`NULL`, `NA`, …). | **Fixed.** It uses `norm_key()`, like the RI check. |
+| P6 | Row and cross-table rules did not intersect violations with the rule's scope, so a pass % could exceed 100%. | **Fixed.** `bad &= scope`. |
+| P7 | "Orphan keys found in other tables" compared raw text, so `45.0` ≠ `45`. | **Fixed** (`norm_key` on both sides). |
+| P8 | `astype(str)` before `blank()` would turn a real NaN into the text `"nan"` on pandas 2. | **Fixed.** Real missing values become `''` first. |
+| P9 | `norm_key` treats the text `NA` as null, which is wrong for a text key such as a country code. | **Kept, documented.** Every Wildcat key is numeric or a date. This is noted in the `check_referential_integrity` docstring. |
+| P10 | `_evidence` and the near-duplicate/orphan detail text name Wildcat columns; the ETF-vs-asset-class rule is a domain assumption. | **Kept.** These only enrich the detail text (counts are schema-driven) or belong to the Wildcat schema, which generic mode does not load. |
+
+#### `02_clean.py`
+
+| # | Claude Code flagged | What I did |
+|---|---|---|
+| C1 | The flag steps (7a–7e) printed only "N flagged"; the before/after proof was an assert. | **Fixed.** Each flag step now prints a Before line (rows × columns, flag absent) and an After line. |
+| C2 | The trading calendar used `drop_duplicates("date")`, but only `date_id` was asserted unique. | **Fixed.** The script stops if `dim_date.date` is not unique. |
+| C3 | Decision log #3 said 197,175 ids, but the code expects 197,044. | **Fixed (documentation).** 131 orphan rows carry a `security_id` and are quarantined first. This is now stated in issue #3 and in the report. |
+| C4 | Decision log #2 says every name maps to a code already in the column, but nothing asserted it. | **Fixed.** Now asserted. |
+| C5 | The log notes hard-coded "78 in raw" and "836 in raw". | **Fixed.** Computed from the raw tables. |
+| C6 | Dedupe groups on raw text, so a copy written `PA` vs `Pennsylvania` would be missed. | **Kept.** `check_count(25)` would stop the script, so this fails loudly, not silently. |
+| C7 | The $1,000 floor is an exact `==`, so `999.99` is not flagged. | **Kept on purpose, documented** in decision log #10: the placeholder is exactly 1000.0. |
+
+#### `03_validate.py`
+
+| # | Claude Code flagged | What I did |
+|---|---|---|
+| V1 | `match_rate` leaves out null keys, so a required FK that is 50% null could score 100%. | **Fixed.** A new `required=` argument (True or a row mask) counts required-row nulls as failures (`required_null_rows`). The scorecard passes each FK's required mask. Structural nulls (e.g. `security_id` on a Deposit) are still not scored. No required FK has nulls in this data. |
+| V2 | `dim_key_duplicates` counts extra rows, not distinct keys, and the docstring was wrong. Blank parent keys were dropped silently. | **Fixed.** The docstring is corrected. The function also returns `dim_duplicate_key_values` and `dim_null_keys`. |
+| V3 | A `datetime64` child column against a text date key made every row an orphan; a float id `1e16` became `"1e+16"`. | **Fixed.** Datetimes are compared as `yyyy-mm-dd`, and whole-number floats are written without exponent (both tested: 0 orphans). A missing column now raises `KeyError`. |
+| V4 | All-null input gives `match_rate = NaN`. | **Kept on purpose** (round 1, #2). NaN means "nothing to score"; the scorecard leaves the cell blank. |
+| V5 | `iqr_flags` returned 0 flags when IQR = 0, so the caller could not tell "no outliers" from "test not possible". | **Fixed.** `flags.attrs["status"]` is `ok`, `no data` or `iqr is 0`, and `run_iqr` stops if a scored column is not `ok`. |
+| V6 | `iqr_flags` silently dropped text (`"1,000,000"`, `"9%"`) and accepted `k ≤ 0`. | **Fixed.** Non-numeric input raises `TypeError`, and `k ≤ 0` raises `ValueError`. |
+| V7 | `045` vs `45` and `ABC` vs `abc` are reported as orphans. | **Kept, documented.** These are real key mismatches. |
+| V8 | IQR fences on mixed or skewed data (`fact_transactions.amount`, AUM) are not very informative. | **Kept** (round 1, #7): the assignment asks for 1.5×IQR, and the report says "flagged ≠ wrong". |
+
+### Round 1: separate Claude sessions
+
+#### `01_profile.py` and `wildcat_schema.py`
 
 | # | Flagged | What I did |
 |---|---|---|
@@ -108,7 +177,7 @@ The reviewers ran the code and tested edge cases on modified copies of the data.
 | 16 | Null-like token list was missing pandas defaults (`#N/A`, `<NA>`, …). | **Fixed.** Tokens are reported as INFO. In keys they are treated as null, not as orphans. |
 | 17 | A UTF-8 / cp1252 problem could appear with Excel-saved CSVs or redirected Windows output. | **Not changed:** the eight source files are plain ASCII/UTF-8. Noted as a limit of generic mode. |
 
-### `02_clean.py`
+#### `02_clean.py`
 
 | # | Flagged | What I did |
 |---|---|---|
@@ -121,7 +190,7 @@ The reviewers ran the code and tested edge cases on modified copies of the data.
 | 7 | The cleaning log lacked entries for several "leave as is" decisions; the reload did not compare column headers. | **Fixed.** The log now has a "leave as is" entry for decision log #7 and #12–#21, and the reload checks the columns. |
 | 8 | The orphan cross-check against other fact tables did not normalise keys. | **Fixed** (`norm_key`). |
 
-### `03_validate.py`
+#### `03_validate.py`
 
 | # | Flagged | What I did |
 |---|---|---|

@@ -282,9 +282,13 @@ def to_num(s):
 
 
 def to_date(s):
-    """Parse ISO yyyy-mm-dd text to datetime; anything else becomes NaT."""
+    """Parse ISO yyyy-mm-dd text to datetime; anything else becomes NaT.
+
+    Strict: the text must be exactly 4-2-2 digits (strptime alone would accept
+    '2020-1-5'), so a date that fails the type check is never used by a rule."""
     t = _text(s)
-    return pd.to_datetime(t.where(t != "", None), format="%Y-%m-%d", errors="coerce")
+    t = t.where(t.str.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}").fillna(False).astype(bool), None)
+    return pd.to_datetime(t, format="%Y-%m-%d", errors="coerce")
 
 
 def valid_type_mask(s, col_type):
@@ -527,15 +531,34 @@ def rule_function(name):
 # the dict of tables and return a Series aligned to the named table.
 # ---------------------------------------------------------------------------
 
+def _unique_lookup(keys, values, what):
+    """Series values indexed by keys, keeping only keys that occur ONCE.
+
+    A blank key, or a key that occurs more than once (which row would be the
+    right one?), is dropped, so rows joining to it are not evaluated instead
+    of being compared with an arbitrary row. A warning is printed; the
+    uniqueness itself is reported by the key-uniqueness checks."""
+    m = pd.Series(list(values), index=pd.Index(list(keys)))
+    m = m[pd.notna(m.index) & (m.index != "")]
+    dup = m.index.duplicated(keep=False)
+    if dup.any():
+        print(f"  WARNING: {int(dup.sum())} rows share a {what}; those keys are not evaluated by the cross-table rules")
+    return m[~dup]
+
+
 def _lookup(child, child_col, parent, parent_key, parent_col):
-    """Map each child row's key to a parent attribute (NaN where no parent)."""
-    p = parent.assign(_k=norm_key(parent[parent_key]))
-    p = p[p["_k"] != ""].drop_duplicates("_k").set_index("_k")[parent_col]
+    """Map each child row's key to a parent attribute (NaN where no parent,
+    or where the parent key is not unique)."""
+    p = _unique_lookup(norm_key(parent[parent_key]), parent[parent_col], f"{parent_key} value")
     return norm_key(child[child_col]).map(p)
 
 
 def _month_key(df, client_col, date_col):
-    return norm_key(df[client_col]) + "|" + to_date(df[date_col]).dt.strftime("%Y-%m")
+    """'client|yyyy-mm', or NaN when the client or the date is unusable, so a
+    bad date never 'matches' another bad date."""
+    k = norm_key(df[client_col])
+    key = k + "|" + to_date(df[date_col]).dt.strftime("%Y-%m")
+    return key.where(k != "")
 
 
 def _cross_advisor_matches_client(fact):
@@ -554,8 +577,7 @@ def _cross_snapshot_account_type(t):
 
 def _snapshot_aum_by_month(t):
     snap = t["fact_portfolio_snapshot"]
-    aum = pd.Series(to_num(snap["aum"]).values, index=_month_key(snap, "client_id", "snapshot_date"))
-    return aum[~aum.index.duplicated()]
+    return _unique_lookup(_month_key(snap, "client_id", "snapshot_date"), to_num(snap["aum"]), "snapshot client-month")
 
 
 def _cross_fee_basis_vs_snapshot(t):
@@ -566,12 +588,15 @@ def _cross_fee_basis_vs_snapshot(t):
 
 def _cross_fee_has_snapshot(t):
     fees, snap = t["fact_fees"], t["fact_portfolio_snapshot"]
-    return ~_month_key(fees, "client_id", "fee_date").isin(set(_month_key(snap, "client_id", "snapshot_date")))
+    fee_key = _month_key(fees, "client_id", "fee_date")
+    snap_keys = set(_month_key(snap, "client_id", "snapshot_date").dropna())
+    return fee_key.notna() & ~fee_key.isin(snap_keys)
 
 
 def _cross_snapshot_has_fee(t):
     fees, snap = t["fact_fees"], t["fact_portfolio_snapshot"]
-    return ~_month_key(snap, "client_id", "snapshot_date").isin(set(_month_key(fees, "client_id", "fee_date")))
+    snap_key = _month_key(snap, "client_id", "snapshot_date")
+    return snap_key.notna() & ~snap_key.isin(set(_month_key(fees, "client_id", "fee_date").dropna()))
 
 
 def _is_advisory_fee(t):
@@ -580,8 +605,7 @@ def _is_advisory_fee(t):
 
 def _billed_fee(t):
     fees = t["fact_fees"]
-    fee_amt = pd.Series(to_num(fees["amount"]).values, index=_month_key(fees, "client_id", "fee_date"))
-    fee_amt = fee_amt[~fee_amt.index.duplicated()]
+    fee_amt = _unique_lookup(_month_key(fees, "client_id", "fee_date"), to_num(fees["amount"]), "fee client-month")
     return _month_key(t["fact_transactions"], "client_id", "txn_date").map(fee_amt)
 
 
@@ -636,8 +660,11 @@ def _cross_inactive_with_latest_snapshot(t):
     client_last = _last_snapshot_month(t, cli["client_id"])
     latest = to_date(t["fact_portfolio_snapshot"]["snapshot_date"]).max()
     active = cat(cli["is_active"])
-    known = client_last.notna() & active.isin(["True", "False"])
-    return known & ((active == "True") != (client_last == latest))
+    # A client with NO snapshot at all cannot have one in the latest month, so
+    # is_active=True is a violation there too (these rows used to be skipped).
+    has_latest = client_last.notna() & (client_last == latest)
+    known = active.isin(["True", "False"])
+    return known & ((active == "True") != has_latest)
 
 
 CROSS_RULES = [

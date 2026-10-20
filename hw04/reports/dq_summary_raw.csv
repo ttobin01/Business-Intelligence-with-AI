@@ -1,95 +1,95 @@
 finding_id,status,table,column,check_group,check,dimension,severity,rows_affected,pct_of_rows,example,detail
 F001,FAIL,dim_client,state,1 Column level,value not in allowed list,Validity / Consistency,ERROR,78,3.089,"'Pennsylvania', 'New York', 'New Jersey'","Values found: Pennsylvania 25, Florida 15, New York 14, New Jersey 13, California 5, Illinois 4, Texas 2. Allowed: AK, AL, AR, AZ, CA, CO, CT, DC, DE, FL, GA, HI, IA, ID, IL, IN, KS, KY, LA, MA, MD, ME, MI, MN, MO, "
 F002,FAIL,dim_client,(first_name+age+city+...),2 Single-table rules,near-duplicate records (same entity / same grain),Uniqueness,ERROR,25,0.99,client_id=674 (Taylor) vs client_id=2501 (Taylo),"Same values in first_name, age, city, state, zip_code, risk_profile, client_tier, primary_account_type, initial_aum, client_since, advisor_id, is_active under a different id; fact rows on copies / originals: fact_fees 0/1296, fact_portfolio_snapshot 0/1374, fact_transactions 0/2874; columns that differ inside the pairs: last_name"
-F003,FAIL,fact_portfolio_snapshot,return_ytd,1 Column level,value does not parse as float,Validity,ERROR,300,0.232,"'9.28%', '19.52%', '13.35%'","Wrong format for the column's type; breaks numeric math or joins; formats: {'9.9%': 188, '-9.9%': 112}; 279 distinct clients"
-F004,FAIL,fact_transactions,security_id,1 Column level,value does not parse as int,Validity,ERROR,197175,65.995,"'45.0', '174.0', '478.0'","Wrong format for the column's type; breaks numeric math or joins; formats: {'9.9': 197175}; 2,631 distinct clients; txn_type: Buy 83,556, Sell 59,755, Dividend 53,864"
-F005,FAIL,fact_transactions,(row rule),2 Single-table rules,shares is positive (direction comes from txn_type),Validity,ERROR,836,0.424,"'272', '812', '815'","rule applies to 197,175 rows; examples are txn_id values; 692 distinct clients; txn_type: Buy 836"
-F006,FAIL,fact_transactions,client_id,3 Referential integrity,orphan foreign key -> dim_client.client_id,Referential Integrity,ERROR,200,0.067,"2702, 2704, 2708, 2714, 2715","200 distinct orphan keys; match rate 99.9331%; orphan client_id range 2702-3192; txn_id range 298573-298772 (contiguous); amount total 10,888,495.37; orphan keys found in other tables: fact_fees 0, fact_portfolio_snapshot 0; 200 distinct clients; txn_type: Buy 58, Dividend 38, Sell 35, Deposit 25, Advisory Fee 24, Withdrawal 20"
-F007,FAIL,dim_client,risk_profile,1 Column level,required value is blank,Completeness,WARN,76,3.01,,"Blank where the business requires a value. Blank rate by group (MCAR check): client_tier: HNW 2.4%, Retail 3.2%, UHNW 3.5% | primary_account_type: 529 3.8%, IRA 2.5%, Roth IRA 3.3%, Taxable 1.9%, Trust 3.5% | is_active: False 2.3%, True 3.1% | client_since year (blank count): 2015 7, 2016 10, 2017 10, 2018 10, 2019 10, 2020 10, 2021 9, 2022 10"
-F008,FAIL,fact_fees,(row rule),2 Single-table rules,"aum_basis is not the $1,000 placeholder floor",Accuracy/Plausibility,WARN,386,0.316,"'1380', '1629', '1630'","rule applies to 122,197 rows; examples are fee_id values; 90 distinct clients; fee_type: Management 227, Advisory 110, Custodial 34, Performance 15"
-F009,FAIL,fact_portfolio_snapshot,(row rule),2 Single-table rules,"aum is not the $1,000 placeholder floor",Accuracy/Plausibility,WARN,420,0.324,"'1463', '1464', '1727'","rule applies to 129,547 rows; examples are snapshot_id values; 92 distinct clients"
-F010,FAIL,fact_portfolio_snapshot,(row rule),2 Single-table rules,|active_alpha_ytd| <= 0.50 (within 50 points of benchmark),Accuracy/Plausibility,WARN,3875,2.991,"'1454', '1455', '1456'","rule applies to 129,547 rows; examples are snapshot_id values; 381 distinct clients"
-F011,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Buy/Sell trades fall on a trading day in dim_date,Accuracy/Plausibility,WARN,40649,28.364,"'26', '43', '51'","rule applies to 143,311 rows; examples are txn_id values; 2,519 distinct clients; txn_type: Buy 23,718, Sell 16,931"
-F012,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,no transaction after the client's last portfolio snapshot month,Consistency,WARN,2410,0.807,"'1278', '1282', '1285'","rule applies to 298,772 rows; examples are txn_id values; 131 distinct clients; txn_type: Buy 689, Sell 482, Dividend 439, Advisory Fee 284, Deposit 278, Withdrawal 238"
-F013,FAIL,dim_advisor,certifications,1 Column level,null-like token stored as text,Validity,INFO,6,24.0,'None',"a default parser may read this as missing (pandas turns 'None', 'NULL', 'NaN', 'N/A' into NaN); decide whether it is a value or a gap"
-F014,FAIL,dim_client,primary_account_type,1 Column level,numeric-looking code that must stay text,Validity,INFO,523,20.713,'529',Leading zeros / codes are lost if a tool types this column as a number
-F015,FAIL,dim_client,zip_code,1 Column level,numeric-looking code that must stay text,Validity,INFO,232,9.188,"'03897', '03946', '09118'",Leading zeros / codes are lost if a tool types this column as a number
-F016,FAIL,dim_client,(row rule),2 Single-table rules,zip_code first digit is consistent with state (USPS area),Accuracy/Plausibility,INFO,2211,90.356,"'1', '2', '3'","rule applies to 2,447 rows; examples are client_id values; 2,211 distinct clients; client_tier: Retail 1,347, HNW 641, UHNW 223; is_active: True 2,054, False 157"
-F017,FAIL,dim_date,(row rule),2 Single-table rules,"fixed market holidays (Jan 1, Jul 4, Dec 25) are not trading days",Accuracy/Plausibility,INFO,9,0.493,"'1', '360', '367'","rule applies to 1,827 rows; examples are date_id values; "
-F018,FAIL,dim_security,expense_ratio_bps,1 Column level,blank by design (structural null),Completeness,INFO,281,56.2,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
-F019,FAIL,dim_security,sector,1 Column level,blank by design (structural null),Completeness,INFO,219,43.8,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
-F020,FAIL,fact_portfolio_snapshot,account_type,1 Column level,numeric-looking code that must stay text,Validity,INFO,26882,20.751,'529',Leading zeros / codes are lost if a tool types this column as a number
-F021,FAIL,fact_portfolio_snapshot,active_alpha_ytd,1 Column level,mixed representations of valid values,Consistency,INFO,756,0.584,"'-1.9e-05', '-2.2e-05', '-6.9e-05'","Parses correctly, but is written in a different format from most values"
-F022,FAIL,fact_portfolio_snapshot,return_ytd,1 Column level,mixed representations of valid values,Consistency,INFO,135,0.104,"'9.9e-05', '4.8e-05', '-7.6e-05'","Parses correctly, but is written in a different format from most values"
-F023,FAIL,fact_portfolio_snapshot,(cross-table rule),4 Cross-table rules,every snapshot month has a fee row (fee billed for the month),Completeness,INFO,7350,5.674,"'22', '42', '59'","rule applies to 129,547 rows; examples are snapshot_id values; 2,261 distinct clients"
-F024,FAIL,fact_transactions,price,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
-F025,FAIL,fact_transactions,security_id,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
-F026,FAIL,fact_transactions,shares,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
-F027,FAIL,fact_transactions,(row rule),2 Single-table rules,Dividend amount is not the full position value (shares x price),Accuracy/Plausibility,INFO,53864,100.0,"'1', '7', '12'","rule applies to 53,864 rows; examples are txn_id values; 2,538 distinct clients; txn_type: Dividend 53,864"
-F028,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Advisory Fee debit has a fact_fees row for that client-month,Consistency,INFO,2297,6.422,"'589', '884', '954'","rule applies to 35,766 rows; examples are txn_id values; 1,260 distinct clients; txn_type: Advisory Fee 2,297"
-F029,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Advisory Fee debit equals the fact_fees amount for that client-month,Consistency,INFO,33468,93.575,"'4', '10', '20'","rule applies to 35,766 rows; examples are txn_id values; 2,499 distinct clients; txn_type: Advisory Fee 33,468"
-F030,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,transaction not dated on a fixed market holiday that dim_date marks as trading,Accuracy/Plausibility,INFO,1508,0.505,"'255', '409', '515'","rule applies to 298,772 rows; examples are txn_id values; 1,089 distinct clients; txn_type: Buy 400, Sell 293, Dividend 282, Advisory Fee 192, Deposit 181, Withdrawal 160"
-F031,PASS,dim_advisor,advisor_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F032,PASS,dim_advisor,advisor_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F033,PASS,dim_advisor,advisor_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F034,PASS,dim_advisor,advisor_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
-F035,PASS,dim_advisor,aum_target_mm,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F036,PASS,dim_advisor,aum_target_mm,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F037,PASS,dim_advisor,aum_target_mm,1 Column level,"value outside range [1, 10000]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F038,PASS,dim_advisor,certifications,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F039,PASS,dim_advisor,certifications,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
-F040,PASS,dim_advisor,first_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F041,PASS,dim_advisor,last_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F042,PASS,dim_advisor,region,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F043,PASS,dim_advisor,region,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
-F044,PASS,dim_advisor,years_experience,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F045,PASS,dim_advisor,years_experience,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F046,PASS,dim_advisor,years_experience,1 Column level,"value outside range [0, 60]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F047,PASS,dim_advisor,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
-F048,PASS,dim_advisor,(first_name+last_name),2 Single-table rules,near-duplicate records (same entity / same grain),Uniqueness,INFO,0,0.0,,checked - no violations
-F049,PASS,dim_benchmark,asset_class,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F050,PASS,dim_benchmark,benchmark_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F051,PASS,dim_benchmark,benchmark_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F052,PASS,dim_benchmark,benchmark_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F053,PASS,dim_benchmark,benchmark_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
-F054,PASS,dim_benchmark,name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F055,PASS,dim_benchmark,ticker_proxy,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F056,PASS,dim_benchmark,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
-F057,PASS,dim_benchmark,(name),2 Single-table rules,near-duplicate records (same entity / same grain),Uniqueness,INFO,0,0.0,,checked - no violations
-F058,PASS,dim_client,advisor_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F059,PASS,dim_client,advisor_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F060,PASS,dim_client,advisor_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F061,PASS,dim_client,age,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F062,PASS,dim_client,age,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F063,PASS,dim_client,age,1 Column level,"value outside range [18, 110]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F064,PASS,dim_client,city,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F065,PASS,dim_client,client_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
-F066,PASS,dim_client,client_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F067,PASS,dim_client,client_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F068,PASS,dim_client,client_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
-F069,PASS,dim_client,client_since,1 Column level,value does not parse as date,Validity,INFO,0,0.0,,checked - no violations
-F070,PASS,dim_client,client_since,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F071,PASS,dim_client,client_since,1 Column level,"value outside range [1990-01-01, 2024-12-31]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F072,PASS,dim_client,client_tier,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F073,PASS,dim_client,client_tier,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
-F074,PASS,dim_client,first_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F075,PASS,dim_client,initial_aum,1 Column level,value does not parse as float,Validity,INFO,0,0.0,,checked - no violations
-F076,PASS,dim_client,initial_aum,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F077,PASS,dim_client,initial_aum,1 Column level,"value outside range [0.01, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
-F078,PASS,dim_client,is_active,1 Column level,value does not parse as bool_tf,Validity,INFO,0,0.0,,checked - no violations
-F079,PASS,dim_client,is_active,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F080,PASS,dim_client,last_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F081,PASS,dim_client,primary_account_type,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F082,PASS,dim_client,primary_account_type,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
-F083,PASS,dim_client,risk_profile,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
-F084,PASS,dim_client,state,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F085,PASS,dim_client,zip_code,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
-F086,PASS,dim_client,zip_code,1 Column level,value does not match pattern ^\d{5}$,Validity,INFO,0,0.0,,checked - no violations
-F087,PASS,dim_client,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
-F088,PASS,dim_client,(row rule),2 Single-table rules,"client_tier matches initial_aum band (<$0.5M Retail, <$5M HNW, else UHNW)",Consistency,INFO,0,0.0,,checked - no violations
-F089,PASS,dim_client,advisor_id,3 Referential integrity,orphan foreign key -> dim_advisor.advisor_id,Referential Integrity,INFO,0,0.0,,checked - no violations
-F090,PASS,dim_client,advisor_id,3 Referential integrity,null foreign key where a dim_advisor link is required,Referential Integrity / Completeness,INFO,0,0.0,,checked - no violations
-F091,PASS,dim_client,(cross-table rule),4 Cross-table rules,is_active = True exactly when the client has a snapshot in the latest month,Consistency,INFO,0,0.0,,checked - no violations
+F003,FAIL,dim_client,(cross-table rule),4 Cross-table rules,is_active = True exactly when the client has a snapshot in the latest month,Consistency,ERROR,24,0.95,"'2501', '2502', '2503'","rule applies to 2,525 rows; examples are client_id values; 24 distinct clients; client_tier: Retail 18, HNW 4, UHNW 2; is_active: True 24"
+F004,FAIL,fact_portfolio_snapshot,return_ytd,1 Column level,value does not parse as float,Validity,ERROR,300,0.232,"'9.28%', '19.52%', '13.35%'","Wrong format for the column's type; breaks numeric math or joins; formats: {'9.9%': 188, '-9.9%': 112}; 279 distinct clients"
+F005,FAIL,fact_transactions,security_id,1 Column level,value does not parse as int,Validity,ERROR,197175,65.995,"'45.0', '174.0', '478.0'","Wrong format for the column's type; breaks numeric math or joins; formats: {'9.9': 197175}; 2,631 distinct clients; txn_type: Buy 83,556, Sell 59,755, Dividend 53,864"
+F006,FAIL,fact_transactions,(row rule),2 Single-table rules,shares is positive (direction comes from txn_type),Validity,ERROR,836,0.424,"'272', '812', '815'","rule applies to 197,175 rows; examples are txn_id values; 692 distinct clients; txn_type: Buy 836"
+F007,FAIL,fact_transactions,client_id,3 Referential integrity,orphan foreign key -> dim_client.client_id,Referential Integrity,ERROR,200,0.067,"2702, 2704, 2708, 2714, 2715","200 distinct orphan keys; match rate 99.9331%; orphan client_id range 2702-3192; txn_id range 298573-298772 (contiguous); amount total 10,888,495.37; orphan keys found in other tables: fact_fees 0, fact_portfolio_snapshot 0; 200 distinct clients; txn_type: Buy 58, Dividend 38, Sell 35, Deposit 25, Advisory Fee 24, Withdrawal 20"
+F008,FAIL,dim_client,risk_profile,1 Column level,required value is blank,Completeness,WARN,76,3.01,,"Blank where the business requires a value. Blank rate by group (MCAR check): client_tier: HNW 2.4%, Retail 3.2%, UHNW 3.5% | primary_account_type: 529 3.8%, IRA 2.5%, Roth IRA 3.3%, Taxable 1.9%, Trust 3.5% | is_active: False 2.3%, True 3.1% | client_since year (blank count): 2015 7, 2016 10, 2017 10, 2018 10, 2019 10, 2020 10, 2021 9, 2022 10"
+F009,FAIL,fact_fees,(row rule),2 Single-table rules,"aum_basis is not the $1,000 placeholder floor",Accuracy/Plausibility,WARN,386,0.316,"'1380', '1629', '1630'","rule applies to 122,197 rows; examples are fee_id values; 90 distinct clients; fee_type: Management 227, Advisory 110, Custodial 34, Performance 15"
+F010,FAIL,fact_portfolio_snapshot,(row rule),2 Single-table rules,"aum is not the $1,000 placeholder floor",Accuracy/Plausibility,WARN,420,0.324,"'1463', '1464', '1727'","rule applies to 129,547 rows; examples are snapshot_id values; 92 distinct clients"
+F011,FAIL,fact_portfolio_snapshot,(row rule),2 Single-table rules,|active_alpha_ytd| <= 0.50 (within 50 points of benchmark),Accuracy/Plausibility,WARN,3875,2.991,"'1454', '1455', '1456'","rule applies to 129,547 rows; examples are snapshot_id values; 381 distinct clients"
+F012,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Buy/Sell trades fall on a trading day in dim_date,Accuracy/Plausibility,WARN,40649,28.364,"'26', '43', '51'","rule applies to 143,311 rows; examples are txn_id values; 2,519 distinct clients; txn_type: Buy 23,718, Sell 16,931"
+F013,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,no transaction after the client's last portfolio snapshot month,Consistency,WARN,2410,0.807,"'1278', '1282', '1285'","rule applies to 298,772 rows; examples are txn_id values; 131 distinct clients; txn_type: Buy 689, Sell 482, Dividend 439, Advisory Fee 284, Deposit 278, Withdrawal 238"
+F014,FAIL,dim_advisor,certifications,1 Column level,null-like token stored as text,Validity,INFO,6,24.0,'None',"a default parser may read this as missing (pandas turns 'None', 'NULL', 'NaN', 'N/A' into NaN); decide whether it is a value or a gap"
+F015,FAIL,dim_client,primary_account_type,1 Column level,numeric-looking code that must stay text,Validity,INFO,523,20.713,'529',Leading zeros / codes are lost if a tool types this column as a number
+F016,FAIL,dim_client,zip_code,1 Column level,numeric-looking code that must stay text,Validity,INFO,232,9.188,"'03897', '03946', '09118'",Leading zeros / codes are lost if a tool types this column as a number
+F017,FAIL,dim_client,(row rule),2 Single-table rules,zip_code first digit is consistent with state (USPS area),Accuracy/Plausibility,INFO,2211,90.356,"'1', '2', '3'","rule applies to 2,447 rows; examples are client_id values; 2,211 distinct clients; client_tier: Retail 1,347, HNW 641, UHNW 223; is_active: True 2,054, False 157"
+F018,FAIL,dim_date,(row rule),2 Single-table rules,"fixed market holidays (Jan 1, Jul 4, Dec 25) are not trading days",Accuracy/Plausibility,INFO,9,0.493,"'1', '360', '367'","rule applies to 1,827 rows; examples are date_id values; "
+F019,FAIL,dim_security,expense_ratio_bps,1 Column level,blank by design (structural null),Completeness,INFO,281,56.2,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
+F020,FAIL,dim_security,sector,1 Column level,blank by design (structural null),Completeness,INFO,219,43.8,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
+F021,FAIL,fact_portfolio_snapshot,account_type,1 Column level,numeric-looking code that must stay text,Validity,INFO,26882,20.751,'529',Leading zeros / codes are lost if a tool types this column as a number
+F022,FAIL,fact_portfolio_snapshot,active_alpha_ytd,1 Column level,mixed representations of valid values,Consistency,INFO,756,0.584,"'-1.9e-05', '-2.2e-05', '-6.9e-05'","Parses correctly, but is written in a different format from most values"
+F023,FAIL,fact_portfolio_snapshot,return_ytd,1 Column level,mixed representations of valid values,Consistency,INFO,135,0.104,"'9.9e-05', '4.8e-05', '-7.6e-05'","Parses correctly, but is written in a different format from most values"
+F024,FAIL,fact_portfolio_snapshot,(cross-table rule),4 Cross-table rules,every snapshot month has a fee row (fee billed for the month),Completeness,INFO,7350,5.674,"'22', '42', '59'","rule applies to 129,547 rows; examples are snapshot_id values; 2,261 distinct clients"
+F025,FAIL,fact_transactions,price,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
+F026,FAIL,fact_transactions,security_id,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
+F027,FAIL,fact_transactions,shares,1 Column level,blank by design (structural null),Completeness,INFO,101597,34.005,,Blank is legitimate for these rows (e.g. no security on a cash flow); do not fill
+F028,FAIL,fact_transactions,(row rule),2 Single-table rules,Dividend amount is not the full position value (shares x price),Accuracy/Plausibility,INFO,53864,100.0,"'1', '7', '12'","rule applies to 53,864 rows; examples are txn_id values; 2,538 distinct clients; txn_type: Dividend 53,864"
+F029,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Advisory Fee debit has a fact_fees row for that client-month,Consistency,INFO,2297,6.422,"'589', '884', '954'","rule applies to 35,766 rows; examples are txn_id values; 1,260 distinct clients; txn_type: Advisory Fee 2,297"
+F030,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,Advisory Fee debit equals the fact_fees amount for that client-month,Consistency,INFO,33468,93.575,"'4', '10', '20'","rule applies to 35,766 rows; examples are txn_id values; 2,499 distinct clients; txn_type: Advisory Fee 33,468"
+F031,FAIL,fact_transactions,(cross-table rule),4 Cross-table rules,transaction not dated on a fixed market holiday that dim_date marks as trading,Accuracy/Plausibility,INFO,1508,0.505,"'255', '409', '515'","rule applies to 298,772 rows; examples are txn_id values; 1,089 distinct clients; txn_type: Buy 400, Sell 293, Dividend 282, Advisory Fee 192, Deposit 181, Withdrawal 160"
+F032,PASS,dim_advisor,advisor_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F033,PASS,dim_advisor,advisor_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F034,PASS,dim_advisor,advisor_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F035,PASS,dim_advisor,advisor_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
+F036,PASS,dim_advisor,aum_target_mm,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F037,PASS,dim_advisor,aum_target_mm,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F038,PASS,dim_advisor,aum_target_mm,1 Column level,"value outside range [1, 10000]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F039,PASS,dim_advisor,certifications,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F040,PASS,dim_advisor,certifications,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
+F041,PASS,dim_advisor,first_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F042,PASS,dim_advisor,last_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F043,PASS,dim_advisor,region,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F044,PASS,dim_advisor,region,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
+F045,PASS,dim_advisor,years_experience,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F046,PASS,dim_advisor,years_experience,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F047,PASS,dim_advisor,years_experience,1 Column level,"value outside range [0, 60]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F048,PASS,dim_advisor,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
+F049,PASS,dim_advisor,(first_name+last_name),2 Single-table rules,near-duplicate records (same entity / same grain),Uniqueness,INFO,0,0.0,,checked - no violations
+F050,PASS,dim_benchmark,asset_class,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F051,PASS,dim_benchmark,benchmark_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F052,PASS,dim_benchmark,benchmark_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F053,PASS,dim_benchmark,benchmark_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F054,PASS,dim_benchmark,benchmark_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
+F055,PASS,dim_benchmark,name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F056,PASS,dim_benchmark,ticker_proxy,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F057,PASS,dim_benchmark,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
+F058,PASS,dim_benchmark,(name),2 Single-table rules,near-duplicate records (same entity / same grain),Uniqueness,INFO,0,0.0,,checked - no violations
+F059,PASS,dim_client,advisor_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F060,PASS,dim_client,advisor_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F061,PASS,dim_client,advisor_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F062,PASS,dim_client,age,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F063,PASS,dim_client,age,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F064,PASS,dim_client,age,1 Column level,"value outside range [18, 110]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F065,PASS,dim_client,city,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F066,PASS,dim_client,client_id,1 Column level,value does not parse as int,Validity,INFO,0,0.0,,checked - no violations
+F067,PASS,dim_client,client_id,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F068,PASS,dim_client,client_id,1 Column level,"value outside range [1, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F069,PASS,dim_client,client_id,1 Column level,primary key is not unique (rows sharing a key value),Uniqueness,INFO,0,0.0,,checked - no violations
+F070,PASS,dim_client,client_since,1 Column level,value does not parse as date,Validity,INFO,0,0.0,,checked - no violations
+F071,PASS,dim_client,client_since,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F072,PASS,dim_client,client_since,1 Column level,"value outside range [1990-01-01, 2024-12-31]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F073,PASS,dim_client,client_tier,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F074,PASS,dim_client,client_tier,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
+F075,PASS,dim_client,first_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F076,PASS,dim_client,initial_aum,1 Column level,value does not parse as float,Validity,INFO,0,0.0,,checked - no violations
+F077,PASS,dim_client,initial_aum,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F078,PASS,dim_client,initial_aum,1 Column level,"value outside range [0.01, ]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations
+F079,PASS,dim_client,is_active,1 Column level,value does not parse as bool_tf,Validity,INFO,0,0.0,,checked - no violations
+F080,PASS,dim_client,is_active,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F081,PASS,dim_client,last_name,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F082,PASS,dim_client,primary_account_type,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F083,PASS,dim_client,primary_account_type,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
+F084,PASS,dim_client,risk_profile,1 Column level,value not in allowed list,Validity / Consistency,INFO,0,0.0,,checked - no violations
+F085,PASS,dim_client,state,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F086,PASS,dim_client,zip_code,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
+F087,PASS,dim_client,zip_code,1 Column level,value does not match pattern ^\d{5}$,Validity,INFO,0,0.0,,checked - no violations
+F088,PASS,dim_client,(all columns),2 Single-table rules,exact duplicate rows (ignoring the id),Uniqueness,INFO,0,0.0,,checked - no violations
+F089,PASS,dim_client,(row rule),2 Single-table rules,"client_tier matches initial_aum band (<$0.5M Retail, <$5M HNW, else UHNW)",Consistency,INFO,0,0.0,,checked - no violations
+F090,PASS,dim_client,advisor_id,3 Referential integrity,orphan foreign key -> dim_advisor.advisor_id,Referential Integrity,INFO,0,0.0,,checked - no violations
+F091,PASS,dim_client,advisor_id,3 Referential integrity,null foreign key where a dim_advisor link is required,Referential Integrity / Completeness,INFO,0,0.0,,checked - no violations
 F092,PASS,dim_date,date,1 Column level,value does not parse as date,Validity,INFO,0,0.0,,checked - no violations
 F093,PASS,dim_date,date,1 Column level,required value is blank,Completeness,INFO,0,0.0,,checked - no violations
 F094,PASS,dim_date,date,1 Column level,"value outside range [2020-01-01, 2024-12-31]",Accuracy/Plausibility,INFO,0,0.0,,checked - no violations

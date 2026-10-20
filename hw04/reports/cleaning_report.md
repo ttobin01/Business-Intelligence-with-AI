@@ -10,7 +10,7 @@
 
 ## Executive summary
 
-The extract was largely sound, but it was not safe to report from as delivered. The audit ran 277 checks and found **6 ERROR-level defects**:
+The extract was largely sound, but it was not safe to report from as delivered. The audit ran 277 checks; 7 ERROR-level checks failed, describing **6 distinct defects** (24 of the duplicate clients also fail the `is_active` consistency rule because they have no snapshots):
 
 1. 25 duplicate client records
 2. 200 transactions ($10,888,495.37) for clients who do not exist
@@ -48,7 +48,7 @@ Four kinds of suspicious values could not be corrected without inventing data. T
 | 10 | fact_portfolio_snapshot | Return > 50 points from benchmark | Flag | 3,875 | alpha = return − benchmark still holds |
 | 11 | dim_client | Risk profile blank | Leave blank | 75 | Gaps evenly spread (MCAR-like) |
 
-Counts differ slightly from the raw audit (78 states, 836 share signs, 40,649 weekend trades) because one state name and some negative-share and weekend rows sat on records that were quarantined first.
+Counts differ slightly from the raw audit (78 states, 836 share signs, 40,649 weekend trades) because one state name and some negative-share, weekend and security-ID rows (131 of the 197,175 IDs) sat on records that were quarantined first.
 
 **Scorecard (raw → clean):**
 
@@ -59,7 +59,7 @@ Counts differ slightly from the raw audit (78 states, 836 share signs, 40,649 we
 | dim_client | Key uniqueness | 99.01% | 100% |
 | fact_portfolio_snapshot | Type validity | 99.982% | 100% |
 
-Rule pass stays below 100% in three fact tables (fact_fees 99.977%, fact_portfolio_snapshot 99.826%, fact_transactions 98.901%) because the flagged WARN issues (balance floors, extreme returns, weekend trades, post-closure activity) are still counted as rule failures. The scorecard shows these limitations instead of hiding them; dim_client moves from 99.742% to 100%.
+Rule pass stays below 100% in three fact tables (fact_fees 99.977%, fact_portfolio_snapshot 99.826%, fact_transactions 98.901%) because the flagged WARN issues (balance floors, extreme returns, weekend trades, post-closure activity) are still counted as rule failures. The scorecard shows these limitations instead of hiding them; dim_client moves from 99.663% to 100%.
 
 ## Key judgment calls
 

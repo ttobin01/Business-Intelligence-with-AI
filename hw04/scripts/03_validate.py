@@ -33,7 +33,22 @@ def check(condition, message):
         raise AssertionError(message)
 
 
-def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
+def _key_text(s):
+    """Text form of a key column before norm_key().
+
+    Text columns are used as written. A datetime column becomes yyyy-mm-dd
+    (str() would give '2020-01-02 00:00:00' and never match a text date key),
+    and a float column holding whole numbers is written without exponent or
+    decimals (str(1e16) would give '1e+16')."""
+    if pd.api.types.is_datetime64_any_dtype(s):
+        return s.dt.strftime("%Y-%m-%d")
+    if pd.api.types.is_float_dtype(s):
+        whole = s.notna() & np.isfinite(s) & (s == np.floor(s))
+        return s.astype(object).where(~whole, s[whole].map(lambda v: f"{v:.0f}")).where(s.notna(), None)
+    return s
+
+
+def check_referential_integrity(fact_df, fact_key, dim_df, dim_key, required=None):
     """Check that every value of fact_df[fact_key] exists in dim_df[dim_key].
 
     Works for any child/parent pair (fact -> dimension, or dimension ->
@@ -42,7 +57,17 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
     a float-formatted id 45.0 still matches 45 - that formatting problem is
     reported by the type-validity checks, not here). A blank key, a real
     NaN/None, or a null-like token ('NULL', 'N/A', ...) counts as a NULL key
-    (unresolvable), never as an orphan.
+    (unresolvable), never as an orphan. Note: the text 'NA' is a null-like
+    token, so a real text key 'NA' (e.g. a country code) would count as null;
+    all Wildcat keys are numeric or dates. Case and leading zeros are NOT
+    normalised ('045' != '45', 'abc' != 'ABC'): those are reported as orphans.
+
+    required (optional): True, or a boolean Series aligned with fact_df,
+    marking rows that MUST have a parent. A null key on a required row is
+    then a failure: it is counted in required_null_rows and match_rate uses
+    matched / (non-null + required-null) rows. Without it, null keys are
+    reported (null_key_rate) but not scored - right for structural nulls such
+    as security_id on a Deposit, wrong for a mandatory client_id.
 
     Returns a dict:
         rows                 total child rows
@@ -50,20 +75,33 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
         null_key_rate        null_key_rows / rows
         non_null_rows        rows - null_key_rows
         matched_rows         non-null rows whose key exists in the parent
-        match_rate           matched_rows / non_null_rows (NaN if every key is null)
+        required_null_rows   null keys on rows marked required (0 if required is None)
+        match_rate           matched_rows / (non_null_rows + required_null_rows)
+                             (NaN if there is nothing to score)
         orphan_row_count     non-null rows whose key is NOT in the parent
         orphan_rate          orphan_row_count / non_null_rows
         distinct_orphan_keys number of different orphan key values
         orphan_key_sample    up to 10 orphan key values (sorted)
-        dim_key_duplicates   parent key values that appear more than once
-                             (a non-unique parent key breaks every join)
+        dim_key_duplicates   EXTRA parent rows that repeat a key already seen
+                             (a key present 3 times counts 2; a non-unique
+                             parent key breaks every join)
+        dim_duplicate_key_values  distinct parent key values that appear more than once
+        dim_null_keys        parent rows with a blank/null key (cannot be joined to)
         orphan_rows          DataFrame of the orphan child rows
     """
-    child = norm_key(fact_df[fact_key])
-    parent = norm_key(dim_df[dim_key])
-    parent = parent[parent != ""]
+    if fact_key not in fact_df.columns or dim_key not in dim_df.columns:
+        raise KeyError(f"column not found: {fact_key!r} in child or {dim_key!r} in parent")
+    child = norm_key(_key_text(fact_df[fact_key]))
+    parent_all = norm_key(_key_text(dim_df[dim_key]))
+    dim_null = int((parent_all == "").sum())
+    parent = parent_all[parent_all != ""]
 
     null_mask = child == ""
+    if required is None:
+        req_null = 0
+    else:
+        req = pd.Series(required, index=fact_df.index) if np.isscalar(required) else required
+        req_null = int((null_mask & req.reindex(fact_df.index).fillna(False).astype(bool)).sum())
     orphan_mask = ~null_mask & ~child.isin(set(parent))
 
     rows = len(child)
@@ -71,6 +109,7 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
     non_null = rows - null_rows
     orphans = int(orphan_mask.sum())
     orphan_keys = sorted(child[orphan_mask].unique(), key=lambda k: (len(k), k))
+    scored = non_null + req_null
 
     return {
         "rows": rows,
@@ -78,12 +117,15 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
         "null_key_rate": null_rows / rows if rows else 0.0,
         "non_null_rows": non_null,
         "matched_rows": non_null - orphans,
-        "match_rate": (non_null - orphans) / non_null if non_null else float("nan"),
+        "required_null_rows": req_null,
+        "match_rate": (non_null - orphans) / scored if scored else float("nan"),
         "orphan_row_count": orphans,
         "orphan_rate": orphans / non_null if non_null else float("nan"),
         "distinct_orphan_keys": len(orphan_keys),
         "orphan_key_sample": orphan_keys[:10],
         "dim_key_duplicates": int(parent.duplicated().sum()),
+        "dim_duplicate_key_values": int(parent[parent.duplicated()].nunique()),
+        "dim_null_keys": dim_null,
         "orphan_rows": fact_df[orphan_mask],
     }
 
@@ -95,7 +137,8 @@ def check_referential_integrity(fact_df, fact_key, dim_df, dim_key):
 def run_referential_integrity(tables, stage, details):
     rows = []
     for child, ckey, parent, pkey in ws.RELATIONSHIPS:
-        r = check_referential_integrity(tables[child], ckey, tables[parent], pkey)
+        req = ws.required_mask(tables[child], ws.SCHEMA[child]["columns"][ckey])
+        r = check_referential_integrity(tables[child], ckey, tables[parent], pkey, required=req)
         rows.append({"stage": stage, "child": child, "fk": ckey, "parent": parent, "pk": pkey,
                      **{k: v for k, v in r.items() if k not in ("orphan_rows", "orphan_key_sample")},
                      "orphan_key_sample": " ".join(r["orphan_key_sample"])})
@@ -250,22 +293,37 @@ def run_reconciliations(tables, stage, details):
 def iqr_flags(series, k=1.5):
     """Flag values outside [Q1 - k*IQR, Q3 + k*IQR] (both tails).
 
-    Returns (flags, low_fence, high_fence). NaN and +/-inf are never flagged and
-    never move the fences. An empty / all-NaN column, or one whose IQR is 0
-    (more than half the values identical), returns no flags and NaN fences
-    rather than raising or flagging every other value.
+    Returns (flags, low_fence, high_fence). The flags Series also carries
+    flags.attrs["status"]: "ok", "no data" (empty / all-NaN) or "iqr is 0"
+    (more than half the values identical), so a caller can tell "no outliers"
+    from "test not possible". In the last two cases there are no flags and
+    the fences are NaN. NaN and +/-inf are never flagged and never move the
+    fences.
+
+    The input must already be numeric (use to_num() on text first): text such
+    as "1,000,000" or "9%" would otherwise become NaN and silently escape the
+    test, so a non-numeric dtype raises TypeError. k must be > 0.
     """
-    x = pd.to_numeric(pd.Series(series), errors="coerce")
+    series = pd.Series(series)
+    if not (pd.api.types.is_numeric_dtype(series) or series.isna().all()) or pd.api.types.is_bool_dtype(series):
+        raise TypeError("iqr_flags needs a numeric Series - convert text with to_num() first")
+    if not (np.isfinite(k) and k > 0):
+        raise ValueError(f"k must be a positive number, got {k}")
+    x = series.astype("float64")
     x = x.where(np.isfinite(x))
     valid = x.dropna()
     no_flags = pd.Series(False, index=x.index)
     if valid.empty:
+        no_flags.attrs["status"] = "no data"
         return no_flags, np.nan, np.nan
     q1, q3 = valid.quantile(0.25), valid.quantile(0.75)
     if q3 == q1:
+        no_flags.attrs["status"] = "iqr is 0"
         return no_flags, np.nan, np.nan
     lo, hi = q1 - k * (q3 - q1), q3 + k * (q3 - q1)
-    return ((x < lo) | (x > hi)).fillna(False), lo, hi
+    flags = ((x < lo) | (x > hi)).fillna(False)
+    flags.attrs["status"] = "ok"
+    return flags, lo, hi
 
 
 IQR_COLUMNS = [
@@ -281,6 +339,7 @@ def run_iqr(tables, stage, details):
     for table, col in IQR_COLUMNS:
         v = to_num(tables[table][col])
         flags, lo, hi = iqr_flags(v)
+        check(flags.attrs["status"] == "ok", f"IQR test not possible on {table}.{col}: {flags.attrs['status']}")
         n = int(v.notna().sum())
         n_low, n_high = int((v < lo).sum()), int((v > hi).sum())
         out.append((table, col, n, int(flags.sum()), lo, hi, n_low, n_high))
@@ -356,9 +415,10 @@ def key_uniqueness(df, table):
 
 def referential_match(ri, table):
     sub = ri[ri["child"] == table]
-    if sub.empty or sub["non_null_rows"].sum() == 0:
-        return np.nan          # table has no foreign keys (or no non-null ones)
-    return 100 * sub["matched_rows"].sum() / sub["non_null_rows"].sum()
+    scored = sub["non_null_rows"].sum() + sub["required_null_rows"].sum()   # a required null counts as a miss
+    if sub.empty or scored == 0:
+        return np.nan          # table has no foreign keys (or nothing to score)
+    return 100 * sub["matched_rows"].sum() / scored
 
 
 def validate_stage(folder, stage, details):

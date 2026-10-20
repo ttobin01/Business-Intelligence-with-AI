@@ -54,6 +54,9 @@ EXPECTED = {
 }
 
 
+RAW = {}   # filled in main(): the untouched raw tables
+
+
 def check(condition, message):
     """Stop the script if a claimed after-state does not hold (works under python -O)."""
     if not bool(condition):
@@ -173,6 +176,8 @@ def step_standardize_state(t, audit):
 
     mapped = cat(cli.loc[bad, "state"]).map(STATE_NAME_TO_CODE)
     check(mapped.notna().all(), "a state name mapped to nothing")
+    check(set(mapped) <= set(cat(cli.loc[~bad, "state"])),
+          "a full name maps to a code that does not already exist in the column")
     cli.loc[bad, "state"] = mapped
     print(f"After:  {(~cli['state'].isin(ws.US_STATE_CODES)).sum()} non-code values | "
           f"rows changed: {bad.sum()} | PA before {(before['state'] == 'PA').sum()} + "
@@ -186,8 +191,9 @@ def step_standardize_state(t, audit):
               f"{code} count does not equal old {code} + '{name}'")
     check((cli.loc[~bad, "state"] == before.loc[~bad, "state"]).all(), "an unrelated state changed")
     audit.value_changes("dim_client", before, cli, bad, "state")
+    raw_n = int((~cat(RAW["dim_client"]["state"]).isin(ws.US_STATE_CODES)).sum())
     audit.step("dim_client", f"state stored as full names ({bad.sum()} rows after de-duplication; "
-               "78 in raw, 1 was on a quarantined duplicate)", "standardize", bad.sum(),
+               f"{raw_n} in raw, {raw_n - int(bad.sum())} was on a quarantined duplicate)", "standardize", bad.sum(),
                "explicit name->code map; checks no unmapped value and per-state counts add up (decision log #2)")
 
 
@@ -294,8 +300,10 @@ def step_fix_share_sign(t, audit):
     sec = sh_after.notna()
     check((((sh_after.abs() * pr).round(2) - amt).abs()[sec] <= 0.011).all(), "reconciliation broke")
     audit.value_changes("fact_transactions", before, tx, neg, "shares")
-    audit.step("fact_transactions", f"{neg.sum()} Buy rows with negative shares (836 in raw; 1 was in "
-               "the quarantined orphan rows)", "convert (absolute value)", neg.sum(),
+    raw_tx = RAW["fact_transactions"]
+    raw_n = int((to_num(raw_tx["shares"]) < 0).sum())
+    audit.step("fact_transactions", f"{neg.sum()} Buy rows with negative shares ({raw_n} in raw; "
+               f"{raw_n - int(neg.sum())} was in the quarantined orphan rows)", "convert (absolute value)", neg.sum(),
                "amount = |shares| x price confirmed on every row before and after (decision log #5)")
 
 
@@ -354,8 +362,10 @@ def _add_flag(t, audit, n, table, col, mask, expected, issue, note):
     df = t[table]
     check(col not in df.columns, f"{col} already exists")
     before = df.copy()
+    print(f"[{n}] Before: {table} has {len(df):,} rows x {df.shape[1]} columns, no {col}")
     df[col] = mask.astype(int).astype(str).values
-    print(f"[{n}] {table}.{col}: {int(mask.sum()):,} rows flagged of {len(df):,}")
+    print(f"[{n}] After:  {table}.{col}: {int(mask.sum()):,} rows flagged of {len(df):,}; "
+          f"{df.shape[1]} columns; all other values unchanged (checked)")
     check_count(expected, int(mask.sum()))
     check(set(df[col]) <= {"0", "1"} and (df[col] == "1").sum() == mask.sum(), "flag values wrong")
     check(list(df.columns) == list(before.columns) + [col], "columns other than the flag changed")
@@ -367,7 +377,8 @@ def step_flags(t, audit):
     banner(7, "Add 0/1 flag columns for values that are suspicious but cannot be corrected")
     tx, sn, fe, dd = t["fact_transactions"], t["fact_portfolio_snapshot"], t["fact_fees"], t["dim_date"]
 
-    calendar = dd.drop_duplicates("date").set_index("date")["is_trading_day"]
+    check(dd["date"].is_unique, "dim_date.date is not unique - trading-day lookup would be ambiguous")
+    calendar = dd.set_index("date")["is_trading_day"]
     trading = tx["txn_date"].map(calendar)
     check(trading.notna().all(), "a txn_date is missing from dim_date")
     m = cat(tx["txn_type"]).isin(["Buy", "Sell"]) & (trading == "0")
@@ -537,6 +548,7 @@ def main():
         check(len(raw[name]) == ws.SCHEMA[name]["rows"], f"{name}: unexpected raw row count")
         check(norm_key(raw[name][ws.SCHEMA[name]["pk"]]).is_unique, f"{name}: raw primary key not unique")
     t = {name: df.copy() for name, df in raw.items()}
+    RAW.update(raw)                      # read-only view of raw, used to compute raw counts in log notes
     audit = AuditTrail()
 
     step_dedupe_clients(t, audit)        # dimensions first

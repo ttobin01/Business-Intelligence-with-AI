@@ -74,14 +74,19 @@ def infer_type(s):
 
 
 def infer_key(df):
-    """Generic mode: a candidate primary key = the first column named like an id
-    (or the first column) whose values are all present and unique."""
-    candidates = [c for c in df.columns if c.lower() == "id" or c.lower().endswith("_id")] + [df.columns[0]]
-    for c in candidates:
-        k = ws.norm_key(df[c])
-        if len(df) and (k != "").all() and k.is_unique:
-            return c
-    return None
+    """Generic mode: the candidate primary key.
+
+    The first column NAMED like a key ('id' or '*_id') is the candidate whether
+    or not its values are unique, so a duplicated id makes the uniqueness check
+    FAIL instead of making the check disappear. Without such a name, the first
+    column is used only if it is complete and unique (otherwise there is no key)."""
+    if not len(df.columns):
+        return None
+    named = [c for c in df.columns if c.lower() == "id" or c.lower().endswith("_id")]
+    if named:
+        return named[0]
+    k = ws.norm_key(df[df.columns[0]])
+    return df.columns[0] if len(df) and (k != "").all() and k.is_unique else None
 
 
 def profile_table(df, table_name, schema=None):
@@ -96,7 +101,8 @@ def profile_table(df, table_name, schema=None):
     rows = []
     n = len(df)
     for col in df.columns:
-        s = df[col].astype(str)
+        # real NaN/None -> '' first: astype(str) alone would turn NaN into the text 'nan' on pandas 2
+        s = df[col].astype(object).where(df[col].notna(), "").astype(str)
         spec = cols_spec.get(col, {})
         col_type = spec.get("type") or infer_type(s)
         is_blank = ws.blank(s)
@@ -402,8 +408,8 @@ def single_table_checks(df, table, schema, f):
     for (t, rule, dim, sev, func, applies) in ws.ROW_RULES:
         if t != table:
             continue
-        bad = func(df).fillna(False).astype(bool)
         scope = applies(df).fillna(False).astype(bool) if applies else pd.Series(True, index=df.index)
+        bad = func(df).fillna(False).astype(bool) & scope     # a failure outside the rule's scope is not counted
         f.add(table, "(row rule)", G, rule, dim, sev, bad.sum(), int(scope.sum()),
               _examples(df.loc[bad, pk]) if pk else "",
               f"rule applies to {int(scope.sum()):,} rows; examples are {pk} values; " + _evidence(df, bad))
@@ -430,7 +436,7 @@ def referential_checks(tables, f, ri_rows):
             if "amount" in o.columns:
                 detail += f"; amount total {ws.to_num(o['amount']).sum():,.2f}"
             others = [t for (t, c, p, _) in ws.RELATIONSHIPS if p == parent and c == pkey and t != child]
-            found = {t: int(o[ckey].isin(set(tables[t][ckey])).sum()) for t in others}
+            found = {t: int(ws.norm_key(o[ckey]).isin(set(ws.norm_key(tables[t][ckey]))).sum()) for t in others}
             detail += "; orphan keys found in other tables: " + ", ".join(f"{t} {v}" for t, v in found.items())
             if "txn_type" in o.columns:
                 detail += "; " + _evidence(o, pd.Series(True, index=o.index))
@@ -439,7 +445,7 @@ def referential_checks(tables, f, ri_rows):
               ", ".join(r["orphan_key_sample"][:5]), detail)
         spec = ws.SCHEMA[child]["columns"][ckey]
         req = ws.required_mask(tables[child], spec)
-        null_req = (ws.blank(tables[child][ckey]) & req).sum()
+        null_req = ((ws.norm_key(tables[child][ckey]) == "") & req).sum()   # same null definition as the RI check
         f.add(child, ckey, G, f"null foreign key where a {parent} link is required",
               "Referential Integrity / Completeness", "ERROR", null_req, r["rows"])
         f.add(parent, pkey, G, f"parent key unique for join from {child}.{ckey}", "Uniqueness",
@@ -450,8 +456,8 @@ def cross_table_checks(tables, f):
     G = "4 Cross-table rules"
     for (table, rule, dim, sev, func, applies) in ws.CROSS_RULES:
         df = tables[table]
-        bad = func(tables).fillna(False).astype(bool)
         scope = applies(tables).fillna(False).astype(bool) if applies else pd.Series(True, index=df.index)
+        bad = func(tables).fillna(False).astype(bool) & scope
         pk = ws.SCHEMA[table]["pk"]
         f.add(table, "(cross-table rule)", G, rule, dim, sev, bad.sum(), int(scope.sum()),
               _examples(df.loc[bad, pk]),

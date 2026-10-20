@@ -101,7 +101,7 @@ raw,rule: cross-table,fact_transactions,[WARN] Buy/Sell trades fall on a trading
 raw,rule: cross-table,fact_transactions,[INFO] transaction not dated on a fixed market holiday that dim_date marks as trading,298772,1508,99.4953,"INFO rule - reported, not scored"
 raw,rule: cross-table,fact_transactions,[WARN] no transaction after the client's last portfolio snapshot month,298772,2410,99.1934,
 raw,rule: cross-table,fact_transactions,[ERROR] no transaction before the client's client_since date,298772,0,100.0,
-raw,rule: cross-table,dim_client,[ERROR] is_active = True exactly when the client has a snapshot in the latest month,2525,0,100.0,
+raw,rule: cross-table,dim_client,[ERROR] is_active = True exactly when the client has a snapshot in the latest month,2525,24,99.0495,
 raw,reconciliation,fact_fees,R1 fact_fees.aum_basis = fact_portfolio_snapshot.aum (same client-month),122197,0,100.0,"sum aum_basis $538,491,810,665.51 vs sum snapshot aum $538,491,810,665.51; 0 fee rows without a snapshot"
 raw,reconciliation,fact_fees,"R2 fact_fees.amount = round(aum_basis x bps_charged / 120,000, 2)",122197,0,100.0,"stored total $204,675,583.12 vs recomputed total $204,675,583.12"
 raw,reconciliation,fact_transactions,"R3 fact_transactions.amount = round(|shares| x price, 2)",197175,0,100.0,"stored total $12,579,735,404.24 vs recomputed total $12,579,735,404.11; rows with negative shares: 836"
