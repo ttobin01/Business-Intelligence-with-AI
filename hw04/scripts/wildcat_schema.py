@@ -289,7 +289,7 @@ def to_date(s):
 
 def valid_type_mask(s, col_type):
     """Boolean Series: does each non-blank value conform to the declared type?
-    ([0-9] rather than \d, so the answer is the same with or without pyarrow strings.)"""
+    ([0-9] rather than a "digit" class, so the answer is the same with or without pyarrow strings.)"""
     t = _text(s)
     if col_type == "int":
         return t.str.fullmatch(r"-?[0-9]+")
