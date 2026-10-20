@@ -1,0 +1,248 @@
+stage,check_type,table,check,evaluated,failed,pass_pct,detail
+raw,referential integrity,dim_client,dim_client.advisor_id -> dim_advisor.advisor_id,2525,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,dim_security,dim_security.benchmark_id -> dim_benchmark.benchmark_id,500,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_transactions,fact_transactions.client_id -> dim_client.client_id,298772,200,99.9331,null-key rate 0.00%; distinct orphan keys 200; parent key duplicates 0
+raw,referential integrity,fact_transactions,fact_transactions.advisor_id -> dim_advisor.advisor_id,298772,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_transactions,fact_transactions.security_id -> dim_security.security_id,197175,0,100.0,null-key rate 34.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_fees,fact_fees.client_id -> dim_client.client_id,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_fees,fact_fees.advisor_id -> dim_advisor.advisor_id,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.client_id -> dim_client.client_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.advisor_id -> dim_advisor.advisor_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.benchmark_id -> dim_benchmark.benchmark_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_transactions,fact_transactions.txn_date -> dim_date.date,298772,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_fees,fact_fees.fee_date -> dim_date.date,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.snapshot_date -> dim_date.date,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+raw,rule: column bound,dim_advisor,"advisor_id within [1, ]",25,0,100.0,
+raw,rule: column bound,dim_advisor,region in allowed list,25,0,100.0,
+raw,rule: column bound,dim_advisor,"years_experience within [0, 60]",25,0,100.0,
+raw,rule: column bound,dim_advisor,"aum_target_mm within [1, 10000]",25,0,100.0,
+raw,rule: column bound,dim_advisor,certifications in allowed list,25,0,100.0,
+raw,rule: column bound,dim_benchmark,"benchmark_id within [1, ]",8,0,100.0,
+raw,rule: column bound,dim_client,"client_id within [1, ]",2525,0,100.0,
+raw,rule: column bound,dim_client,"age within [18, 110]",2525,0,100.0,
+raw,rule: column bound,dim_client,state in allowed list,2525,78,96.9109,
+raw,rule: column bound,dim_client,zip_code matches ^\d{5}$,2525,0,100.0,
+raw,rule: column bound,dim_client,risk_profile in allowed list,2449,0,100.0,
+raw,rule: column bound,dim_client,client_tier in allowed list,2525,0,100.0,
+raw,rule: column bound,dim_client,primary_account_type in allowed list,2525,0,100.0,
+raw,rule: column bound,dim_client,"initial_aum within [0.01, ]",2525,0,100.0,
+raw,rule: column bound,dim_client,"client_since within [1990-01-01, 2024-12-31]",2525,0,100.0,
+raw,rule: column bound,dim_client,"advisor_id within [1, ]",2525,0,100.0,
+raw,rule: column bound,dim_date,"date_id within [1, ]",1827,0,100.0,
+raw,rule: column bound,dim_date,"date within [2020-01-01, 2024-12-31]",1827,0,100.0,
+raw,rule: column bound,dim_date,"year within [2020, 2024]",1827,0,100.0,
+raw,rule: column bound,dim_date,"quarter within [1, 4]",1827,0,100.0,
+raw,rule: column bound,dim_date,"month within [1, 12]",1827,0,100.0,
+raw,rule: column bound,dim_date,month_name in allowed list,1827,0,100.0,
+raw,rule: column bound,dim_date,"week_of_year within [1, 53]",1827,0,100.0,
+raw,rule: column bound,dim_date,day_of_week in allowed list,1827,0,100.0,
+raw,rule: column bound,dim_security,"security_id within [1, ]",500,0,100.0,
+raw,rule: column bound,dim_security,"ticker matches ^[A-Z]{1,5}$",500,0,100.0,
+raw,rule: column bound,dim_security,asset_class in allowed list,500,0,100.0,
+raw,rule: column bound,dim_security,"benchmark_id within [1, ]",500,0,100.0,
+raw,rule: column bound,dim_security,"expense_ratio_bps within [0, 300]",219,0,100.0,
+raw,rule: column bound,fact_fees,"fee_id within [1, ]",122197,0,100.0,
+raw,rule: column bound,fact_fees,"client_id within [1, ]",122197,0,100.0,
+raw,rule: column bound,fact_fees,"advisor_id within [1, ]",122197,0,100.0,
+raw,rule: column bound,fact_fees,"fee_date within [2020-01-01, 2024-12-31]",122197,0,100.0,
+raw,rule: column bound,fact_fees,fee_type in allowed list,122197,0,100.0,
+raw,rule: column bound,fact_fees,"aum_basis within [0.01, ]",122197,0,100.0,
+raw,rule: column bound,fact_fees,"bps_charged within [0.01, 300]",122197,0,100.0,
+raw,rule: column bound,fact_fees,"amount within [0.01, ]",122197,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"snapshot_id within [1, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"client_id within [1, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"advisor_id within [1, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"benchmark_id within [1, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"snapshot_date within [2020-01-01, 2024-12-31]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"year within [2020, 2024]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"month within [1, 12]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"aum within [0.01, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"return_ytd within [-1.0, ]",129247,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"benchmark_return_ytd within [-1.0, ]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,"cash_pct within [0.0, 1.0]",129547,0,100.0,
+raw,rule: column bound,fact_portfolio_snapshot,account_type in allowed list,129547,0,100.0,
+raw,rule: column bound,fact_transactions,"txn_id within [1, ]",298772,0,100.0,
+raw,rule: column bound,fact_transactions,"client_id within [1, ]",298772,0,100.0,
+raw,rule: column bound,fact_transactions,"advisor_id within [1, ]",298772,0,100.0,
+raw,rule: column bound,fact_transactions,"security_id within [1, ]",0,0,100.0,
+raw,rule: column bound,fact_transactions,"txn_date within [2020-01-01, 2024-12-31]",298772,0,100.0,
+raw,rule: column bound,fact_transactions,txn_type in allowed list,298772,0,100.0,
+raw,rule: column bound,fact_transactions,"price within [0.01, ]",197175,0,100.0,
+raw,rule: column bound,fact_transactions,"amount within [0.01, ]",298772,0,100.0,
+raw,rule: single-table,dim_client,"[ERROR] client_tier matches initial_aum band (<$0.5M Retail, <$5M HNW, else UHNW)",2525,0,100.0,
+raw,rule: single-table,dim_client,[INFO] zip_code first digit is consistent with state (USPS area),2447,2211,9.6445,"INFO rule - reported, not scored"
+raw,rule: single-table,dim_date,[ERROR] year/quarter/month/week/day names/period-end flags agree with date,1827,0,100.0,
+raw,rule: single-table,dim_date,[ERROR] weekend dates are not trading days,1827,0,100.0,
+raw,rule: single-table,dim_date,"[INFO] fixed market holidays (Jan 1, Jul 4, Dec 25) are not trading days",1827,9,99.5074,"INFO rule - reported, not scored"
+raw,rule: single-table,dim_security,[ERROR] is_etf is True exactly when asset_class is not Equity,500,0,100.0,
+raw,rule: single-table,dim_security,[ERROR] ETFs have no sector and single stocks have no expense ratio (structural nulls),500,0,100.0,
+raw,rule: single-table,fact_fees,"[ERROR] amount = round(aum_basis x bps_charged / 10,000 / 12, 2)",122197,0,100.0,
+raw,rule: single-table,fact_fees,[ERROR] fee_date falls on the 1st of the month (monthly grain),122197,0,100.0,
+raw,rule: single-table,fact_fees,"[WARN] aum_basis is not the $1,000 placeholder floor",122197,386,99.6841,
+raw,rule: single-table,fact_portfolio_snapshot,[ERROR] year and month agree with snapshot_date,129547,0,100.0,
+raw,rule: single-table,fact_portfolio_snapshot,[ERROR] snapshot_date falls on the 1st of the month (monthly grain),129547,0,100.0,
+raw,rule: single-table,fact_portfolio_snapshot,[ERROR] active_alpha_ytd = return_ytd - benchmark_return_ytd,129547,0,100.0,
+raw,rule: single-table,fact_portfolio_snapshot,"[WARN] aum is not the $1,000 placeholder floor",129547,420,99.6758,
+raw,rule: single-table,fact_portfolio_snapshot,[WARN] |active_alpha_ytd| <= 0.50 (within 50 points of benchmark),129547,3875,97.0088,
+raw,rule: single-table,fact_transactions,[ERROR] security_id/shares/price present for Buy/Sell/Dividend and absent otherwise,298772,0,100.0,
+raw,rule: single-table,fact_transactions,[ERROR] shares is positive (direction comes from txn_type),197175,836,99.576,
+raw,rule: single-table,fact_transactions,"[ERROR] amount = round(|shares| x price, 2) for security rows",197175,0,100.0,
+raw,rule: single-table,fact_transactions,[INFO] Dividend amount is not the full position value (shares x price),53864,53864,0.0,"INFO rule - reported, not scored"
+raw,rule: cross-table,fact_transactions,[ERROR] advisor_id matches the client's advisor in dim_client,298772,0,100.0,
+raw,rule: cross-table,fact_fees,[ERROR] advisor_id matches the client's advisor in dim_client,122197,0,100.0,
+raw,rule: cross-table,fact_portfolio_snapshot,[ERROR] advisor_id matches the client's advisor in dim_client,129547,0,100.0,
+raw,rule: cross-table,fact_portfolio_snapshot,[ERROR] account_type matches the client's primary_account_type,129547,0,100.0,
+raw,rule: cross-table,fact_fees,[ERROR] aum_basis equals the snapshot aum for the same client and month,122197,0,100.0,
+raw,rule: cross-table,fact_fees,[ERROR] every fee row has a portfolio snapshot for the same client and month,122197,0,100.0,
+raw,rule: cross-table,fact_portfolio_snapshot,[INFO] every snapshot month has a fee row (fee billed for the month),129547,7350,94.3264,"INFO rule - reported, not scored"
+raw,rule: cross-table,fact_transactions,[INFO] Advisory Fee debit has a fact_fees row for that client-month,35766,2297,93.5777,"INFO rule - reported, not scored"
+raw,rule: cross-table,fact_transactions,[INFO] Advisory Fee debit equals the fact_fees amount for that client-month,35766,33468,6.4251,"INFO rule - reported, not scored"
+raw,rule: cross-table,fact_transactions,[WARN] Buy/Sell trades fall on a trading day in dim_date,143311,40649,71.6358,
+raw,rule: cross-table,fact_transactions,[INFO] transaction not dated on a fixed market holiday that dim_date marks as trading,298772,1508,99.4953,"INFO rule - reported, not scored"
+raw,rule: cross-table,fact_transactions,[WARN] no transaction after the client's last portfolio snapshot month,298772,2410,99.1934,
+raw,rule: cross-table,fact_transactions,[ERROR] no transaction before the client's client_since date,298772,0,100.0,
+raw,rule: cross-table,dim_client,[ERROR] is_active = True exactly when the client has a snapshot in the latest month,2525,0,100.0,
+raw,reconciliation,fact_fees,R1 fact_fees.aum_basis = fact_portfolio_snapshot.aum (same client-month),122197,0,100.0,"sum aum_basis $538,491,810,665.51 vs sum snapshot aum $538,491,810,665.51; 0 fee rows without a snapshot"
+raw,reconciliation,fact_fees,"R2 fact_fees.amount = round(aum_basis x bps_charged / 120,000, 2)",122197,0,100.0,"stored total $204,675,583.12 vs recomputed total $204,675,583.12"
+raw,reconciliation,fact_transactions,"R3 fact_transactions.amount = round(|shares| x price, 2)",197175,0,100.0,"stored total $12,579,735,404.24 vs recomputed total $12,579,735,404.11; rows with negative shares: 836"
+raw,reconciliation,fact_portfolio_snapshot,R4 fact_portfolio_snapshot.return_ytd = benchmark_return_ytd + active_alpha_ytd,129547,300,99.7684,300 return values unparseable (counted as not reconciled)
+raw,reconciliation,fact_transactions,R5 fact_transactions.advisor_id = dim_client.advisor_id for the client,298572,0,100.0,200 rows whose client is not in dim_client
+raw,reconciliation,fact_fees,R5 fact_fees.advisor_id = dim_client.advisor_id for the client,122197,0,100.0,0 rows whose client is not in dim_client
+raw,reconciliation,fact_portfolio_snapshot,R5 fact_portfolio_snapshot.advisor_id = dim_client.advisor_id for the client,129547,0,100.0,0 rows whose client is not in dim_client
+raw,IQR outlier (informational),fact_portfolio_snapshot,aum outside Q1-1.5*IQR .. Q3+1.5*IQR,129547,13261,89.7636,"fences [-3,747,266.43, 6,926,558.87]; 0 low / 13261 high; flagged != wrong"
+raw,IQR outlier (informational),fact_fees,amount outside Q1-1.5*IQR .. Q3+1.5*IQR,122197,11341,90.7191,"fences [-1,924.66, 3,710.70]; 0 low / 11341 high; flagged != wrong"
+raw,IQR outlier (informational),fact_transactions,amount outside Q1-1.5*IQR .. Q3+1.5*IQR,298772,7224,97.5821,"fences [-92,543.19, 186,449.13]; 0 low / 7224 high; flagged != wrong"
+raw,IQR outlier (informational),dim_client,initial_aum outside Q1-1.5*IQR .. Q3+1.5*IQR,2525,253,89.9802,"fences [-3,245,343.60, 6,023,140.45]; 0 low / 253 high; flagged != wrong"
+raw,headline total,,clients in dim_client,,,,2525
+raw,headline total,,total fee revenue ($),,,,204675583.12
+raw,headline total,,"AUM-weighted fee rate (bps) = sum(fees) x 12 x 10,000 / sum(aum_basis)",,,,45.61
+raw,headline total,,simple average bps_charged,,,,75.99
+raw,headline total,,net cash flow ($) = deposits - withdrawals,,,,327788721.46
+raw,headline total,,ending AUM ($) at 2024-12-01,,,,12729572078.86
+raw,headline total,,clients with a snapshot at 2024-12-01,,,,2325
+raw,headline total,,simple average return_ytd at 2024-12-01 (%),,,,33.53
+raw,headline total,,AUM-weighted return_ytd at 2024-12-01 (%),,,,20.0
+clean,referential integrity,dim_client,dim_client.advisor_id -> dim_advisor.advisor_id,2500,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,dim_security,dim_security.benchmark_id -> dim_benchmark.benchmark_id,500,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_transactions,fact_transactions.client_id -> dim_client.client_id,298572,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_transactions,fact_transactions.advisor_id -> dim_advisor.advisor_id,298572,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_transactions,fact_transactions.security_id -> dim_security.security_id,197044,0,100.0,null-key rate 34.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_fees,fact_fees.client_id -> dim_client.client_id,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_fees,fact_fees.advisor_id -> dim_advisor.advisor_id,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.client_id -> dim_client.client_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.advisor_id -> dim_advisor.advisor_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.benchmark_id -> dim_benchmark.benchmark_id,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_transactions,fact_transactions.txn_date -> dim_date.date,298572,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_fees,fact_fees.fee_date -> dim_date.date,122197,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,referential integrity,fact_portfolio_snapshot,fact_portfolio_snapshot.snapshot_date -> dim_date.date,129547,0,100.0,null-key rate 0.00%; distinct orphan keys 0; parent key duplicates 0
+clean,rule: column bound,dim_advisor,"advisor_id within [1, ]",25,0,100.0,
+clean,rule: column bound,dim_advisor,region in allowed list,25,0,100.0,
+clean,rule: column bound,dim_advisor,"years_experience within [0, 60]",25,0,100.0,
+clean,rule: column bound,dim_advisor,"aum_target_mm within [1, 10000]",25,0,100.0,
+clean,rule: column bound,dim_advisor,certifications in allowed list,25,0,100.0,
+clean,rule: column bound,dim_benchmark,"benchmark_id within [1, ]",8,0,100.0,
+clean,rule: column bound,dim_client,"client_id within [1, ]",2500,0,100.0,
+clean,rule: column bound,dim_client,"age within [18, 110]",2500,0,100.0,
+clean,rule: column bound,dim_client,state in allowed list,2500,0,100.0,
+clean,rule: column bound,dim_client,zip_code matches ^\d{5}$,2500,0,100.0,
+clean,rule: column bound,dim_client,risk_profile in allowed list,2425,0,100.0,
+clean,rule: column bound,dim_client,client_tier in allowed list,2500,0,100.0,
+clean,rule: column bound,dim_client,primary_account_type in allowed list,2500,0,100.0,
+clean,rule: column bound,dim_client,"initial_aum within [0.01, ]",2500,0,100.0,
+clean,rule: column bound,dim_client,"client_since within [1990-01-01, 2024-12-31]",2500,0,100.0,
+clean,rule: column bound,dim_client,"advisor_id within [1, ]",2500,0,100.0,
+clean,rule: column bound,dim_date,"date_id within [1, ]",1827,0,100.0,
+clean,rule: column bound,dim_date,"date within [2020-01-01, 2024-12-31]",1827,0,100.0,
+clean,rule: column bound,dim_date,"year within [2020, 2024]",1827,0,100.0,
+clean,rule: column bound,dim_date,"quarter within [1, 4]",1827,0,100.0,
+clean,rule: column bound,dim_date,"month within [1, 12]",1827,0,100.0,
+clean,rule: column bound,dim_date,month_name in allowed list,1827,0,100.0,
+clean,rule: column bound,dim_date,"week_of_year within [1, 53]",1827,0,100.0,
+clean,rule: column bound,dim_date,day_of_week in allowed list,1827,0,100.0,
+clean,rule: column bound,dim_security,"security_id within [1, ]",500,0,100.0,
+clean,rule: column bound,dim_security,"ticker matches ^[A-Z]{1,5}$",500,0,100.0,
+clean,rule: column bound,dim_security,asset_class in allowed list,500,0,100.0,
+clean,rule: column bound,dim_security,"benchmark_id within [1, ]",500,0,100.0,
+clean,rule: column bound,dim_security,"expense_ratio_bps within [0, 300]",219,0,100.0,
+clean,rule: column bound,fact_fees,"fee_id within [1, ]",122197,0,100.0,
+clean,rule: column bound,fact_fees,"client_id within [1, ]",122197,0,100.0,
+clean,rule: column bound,fact_fees,"advisor_id within [1, ]",122197,0,100.0,
+clean,rule: column bound,fact_fees,"fee_date within [2020-01-01, 2024-12-31]",122197,0,100.0,
+clean,rule: column bound,fact_fees,fee_type in allowed list,122197,0,100.0,
+clean,rule: column bound,fact_fees,"aum_basis within [0.01, ]",122197,0,100.0,
+clean,rule: column bound,fact_fees,"bps_charged within [0.01, 300]",122197,0,100.0,
+clean,rule: column bound,fact_fees,"amount within [0.01, ]",122197,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"snapshot_id within [1, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"client_id within [1, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"advisor_id within [1, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"benchmark_id within [1, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"snapshot_date within [2020-01-01, 2024-12-31]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"year within [2020, 2024]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"month within [1, 12]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"aum within [0.01, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"return_ytd within [-1.0, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"benchmark_return_ytd within [-1.0, ]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,"cash_pct within [0.0, 1.0]",129547,0,100.0,
+clean,rule: column bound,fact_portfolio_snapshot,account_type in allowed list,129547,0,100.0,
+clean,rule: column bound,fact_transactions,"txn_id within [1, ]",298572,0,100.0,
+clean,rule: column bound,fact_transactions,"client_id within [1, ]",298572,0,100.0,
+clean,rule: column bound,fact_transactions,"advisor_id within [1, ]",298572,0,100.0,
+clean,rule: column bound,fact_transactions,"security_id within [1, ]",197044,0,100.0,
+clean,rule: column bound,fact_transactions,"txn_date within [2020-01-01, 2024-12-31]",298572,0,100.0,
+clean,rule: column bound,fact_transactions,txn_type in allowed list,298572,0,100.0,
+clean,rule: column bound,fact_transactions,"price within [0.01, ]",197044,0,100.0,
+clean,rule: column bound,fact_transactions,"amount within [0.01, ]",298572,0,100.0,
+clean,rule: single-table,dim_client,"[ERROR] client_tier matches initial_aum band (<$0.5M Retail, <$5M HNW, else UHNW)",2500,0,100.0,
+clean,rule: single-table,dim_client,[INFO] zip_code first digit is consistent with state (USPS area),2500,2260,9.6,"INFO rule - reported, not scored"
+clean,rule: single-table,dim_date,[ERROR] year/quarter/month/week/day names/period-end flags agree with date,1827,0,100.0,
+clean,rule: single-table,dim_date,[ERROR] weekend dates are not trading days,1827,0,100.0,
+clean,rule: single-table,dim_date,"[INFO] fixed market holidays (Jan 1, Jul 4, Dec 25) are not trading days",1827,9,99.5074,"INFO rule - reported, not scored"
+clean,rule: single-table,dim_security,[ERROR] is_etf is True exactly when asset_class is not Equity,500,0,100.0,
+clean,rule: single-table,dim_security,[ERROR] ETFs have no sector and single stocks have no expense ratio (structural nulls),500,0,100.0,
+clean,rule: single-table,fact_fees,"[ERROR] amount = round(aum_basis x bps_charged / 10,000 / 12, 2)",122197,0,100.0,
+clean,rule: single-table,fact_fees,[ERROR] fee_date falls on the 1st of the month (monthly grain),122197,0,100.0,
+clean,rule: single-table,fact_fees,"[WARN] aum_basis is not the $1,000 placeholder floor",122197,386,99.6841,
+clean,rule: single-table,fact_portfolio_snapshot,[ERROR] year and month agree with snapshot_date,129547,0,100.0,
+clean,rule: single-table,fact_portfolio_snapshot,[ERROR] snapshot_date falls on the 1st of the month (monthly grain),129547,0,100.0,
+clean,rule: single-table,fact_portfolio_snapshot,[ERROR] active_alpha_ytd = return_ytd - benchmark_return_ytd,129547,0,100.0,
+clean,rule: single-table,fact_portfolio_snapshot,"[WARN] aum is not the $1,000 placeholder floor",129547,420,99.6758,
+clean,rule: single-table,fact_portfolio_snapshot,[WARN] |active_alpha_ytd| <= 0.50 (within 50 points of benchmark),129547,3875,97.0088,
+clean,rule: single-table,fact_transactions,[ERROR] security_id/shares/price present for Buy/Sell/Dividend and absent otherwise,298572,0,100.0,
+clean,rule: single-table,fact_transactions,[ERROR] shares is positive (direction comes from txn_type),197044,0,100.0,
+clean,rule: single-table,fact_transactions,"[ERROR] amount = round(|shares| x price, 2) for security rows",197044,0,100.0,
+clean,rule: single-table,fact_transactions,[INFO] Dividend amount is not the full position value (shares x price),53826,53826,0.0,"INFO rule - reported, not scored"
+clean,rule: cross-table,fact_transactions,[ERROR] advisor_id matches the client's advisor in dim_client,298572,0,100.0,
+clean,rule: cross-table,fact_fees,[ERROR] advisor_id matches the client's advisor in dim_client,122197,0,100.0,
+clean,rule: cross-table,fact_portfolio_snapshot,[ERROR] advisor_id matches the client's advisor in dim_client,129547,0,100.0,
+clean,rule: cross-table,fact_portfolio_snapshot,[ERROR] account_type matches the client's primary_account_type,129547,0,100.0,
+clean,rule: cross-table,fact_fees,[ERROR] aum_basis equals the snapshot aum for the same client and month,122197,0,100.0,
+clean,rule: cross-table,fact_fees,[ERROR] every fee row has a portfolio snapshot for the same client and month,122197,0,100.0,
+clean,rule: cross-table,fact_portfolio_snapshot,[INFO] every snapshot month has a fee row (fee billed for the month),129547,7350,94.3264,"INFO rule - reported, not scored"
+clean,rule: cross-table,fact_transactions,[INFO] Advisory Fee debit has a fact_fees row for that client-month,35742,2273,93.6405,"INFO rule - reported, not scored"
+clean,rule: cross-table,fact_transactions,[INFO] Advisory Fee debit equals the fact_fees amount for that client-month,35742,33468,6.3623,"INFO rule - reported, not scored"
+clean,rule: cross-table,fact_transactions,[WARN] Buy/Sell trades fall on a trading day in dim_date,143218,40630,71.6307,
+clean,rule: cross-table,fact_transactions,[INFO] transaction not dated on a fixed market holiday that dim_date marks as trading,298572,1508,99.4949,"INFO rule - reported, not scored"
+clean,rule: cross-table,fact_transactions,[WARN] no transaction after the client's last portfolio snapshot month,298572,2410,99.1928,
+clean,rule: cross-table,fact_transactions,[ERROR] no transaction before the client's client_since date,298572,0,100.0,
+clean,rule: cross-table,dim_client,[ERROR] is_active = True exactly when the client has a snapshot in the latest month,2500,0,100.0,
+clean,reconciliation,fact_fees,R1 fact_fees.aum_basis = fact_portfolio_snapshot.aum (same client-month),122197,0,100.0,"sum aum_basis $538,491,810,665.51 vs sum snapshot aum $538,491,810,665.51; 0 fee rows without a snapshot"
+clean,reconciliation,fact_fees,"R2 fact_fees.amount = round(aum_basis x bps_charged / 120,000, 2)",122197,0,100.0,"stored total $204,675,583.12 vs recomputed total $204,675,583.12"
+clean,reconciliation,fact_transactions,"R3 fact_transactions.amount = round(|shares| x price, 2)",197044,0,100.0,"stored total $12,571,369,932.59 vs recomputed total $12,571,369,932.46; rows with negative shares: 0"
+clean,reconciliation,fact_portfolio_snapshot,R4 fact_portfolio_snapshot.return_ytd = benchmark_return_ytd + active_alpha_ytd,129547,0,100.0,0 return values unparseable (counted as not reconciled)
+clean,reconciliation,fact_transactions,R5 fact_transactions.advisor_id = dim_client.advisor_id for the client,298572,0,100.0,0 rows whose client is not in dim_client
+clean,reconciliation,fact_fees,R5 fact_fees.advisor_id = dim_client.advisor_id for the client,122197,0,100.0,0 rows whose client is not in dim_client
+clean,reconciliation,fact_portfolio_snapshot,R5 fact_portfolio_snapshot.advisor_id = dim_client.advisor_id for the client,129547,0,100.0,0 rows whose client is not in dim_client
+clean,IQR outlier (informational),fact_portfolio_snapshot,aum outside Q1-1.5*IQR .. Q3+1.5*IQR,129547,13261,89.7636,"fences [-3,747,266.43, 6,926,558.87]; 0 low / 13261 high; flagged != wrong"
+clean,IQR outlier (informational),fact_fees,amount outside Q1-1.5*IQR .. Q3+1.5*IQR,122197,11341,90.7191,"fences [-1,924.66, 3,710.70]; 0 low / 11341 high; flagged != wrong"
+clean,IQR outlier (informational),fact_transactions,amount outside Q1-1.5*IQR .. Q3+1.5*IQR,298572,7221,97.5815,"fences [-92,539.84, 186,444.00]; 0 low / 7221 high; flagged != wrong"
+clean,IQR outlier (informational),dim_client,initial_aum outside Q1-1.5*IQR .. Q3+1.5*IQR,2500,251,89.96,"fences [-3,261,681.53, 6,054,838.50]; 0 low / 251 high; flagged != wrong"
+clean,headline total,,clients in dim_client,,,,2500
+clean,headline total,,total fee revenue ($),,,,204675583.12
+clean,headline total,,"AUM-weighted fee rate (bps) = sum(fees) x 12 x 10,000 / sum(aum_basis)",,,,45.61
+clean,headline total,,simple average bps_charged,,,,75.99
+clean,headline total,,net cash flow ($) = deposits - withdrawals,,,,327439026.62
+clean,headline total,,ending AUM ($) at 2024-12-01,,,,12729572078.86
+clean,headline total,,clients with a snapshot at 2024-12-01,,,,2325
+clean,headline total,,simple average return_ytd at 2024-12-01 (%),,,,33.49
+clean,headline total,,AUM-weighted return_ytd at 2024-12-01 (%),,,,20.0
+clean,headline total,,simple average return_ytd at 2024-12-01 excluding extreme_return_flag rows (%),,,,18.81
